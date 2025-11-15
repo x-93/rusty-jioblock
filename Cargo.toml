@@ -1,0 +1,23 @@
+[workspace]
+members = [
+    "consensus",
+    "consensus/core",
+    "consensus/pow",
+    "database",
+    "crypto",
+    "crypto/hashes",
+    "wallet",
+    "network",
+    "rpc/core",
+    "rpc/wrpc",
+    "math",
+    "utils",
+    "mining",
+    "jiopad",
+    "explorer"
+]
+resolver = "2"
+
+# Don't allow workspace dependencies to automatically inherit
+# features. Each crate must explicitly specify its features.
+   

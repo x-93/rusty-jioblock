@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JIO Mining Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            color: #00d4ff;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            color: #b0b0b0;
+            font-size: 1.1em;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #1e1e2e, #2a2a3e);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border: 1px solid #333;
+            transition: transform 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card h3 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #00d4ff;
+            padding-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h3 i {
+            font-size: 1.2em;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            color: #b0b0b0;
+            font-size: 0.9em;
+        }
+
+        .metric-value {
+            color: #fff;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .hashrate {
+            color: #00ff88 !important;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-active {
+            color: #00ff88;
+        }
+
+        .status-inactive {
+            color: #ff6b6b;
+        }
+
+        .worker-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .worker-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #444;
+        }
+
+        .worker-item:last-child {
+            border-bottom: none;
+        }
+
+        .worker-name {
+            color: #00d4ff;
+        }
+
+        .worker-hashrate {
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+        }
+
+        .chart-container {
+            height: 200px;
+            position: relative;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .alert {
+            background: #ff6b6b;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b, #cc5555);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>JIO Mining Dashboard</h1>
+        <div class="subtitle">Professional Mining Statistics & Control Panel</div>
+    </div>
+
+    <div id="alert" class="alert"></div>
+
+    <div class="dashboard">
+        <div class="card">
+            <h3><i class="fas fa-play-circle"></i>Mining Status</h3>
+            <div class="metric">
+                <span class="metric-label">Status</span>
+                <span id="mining-status" class="metric-value status-inactive">Not Mining</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Current Hashrate</span>
+                <span id="current-hashrate" class="metric-value hashrate">0.00 H/s</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Network Hashrate</span>
+                <span id="network-hashrate" class="metric-value">0.00 H/s</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Difficulty</span>
+                <span id="difficulty" class="metric-value">1.00</span>
+            </div>
+            <div class="controls">
+                <button id="start-mining" class="btn"><i class="fas fa-play"></i> Start Mining</button>
+                <button id="stop-mining" class="btn btn-danger"><i class="fas fa-stop"></i> Stop Mining</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3><i class="fas fa-chart-bar"></i>Mining Statistics</h3>
+            <div class="metric">
+                <span class="metric-label">Blocks Mined</span>
+                <span id="blocks-mined" class="metric-value">0</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Total Mining Time</span>
+                <span id="total-mining-time" class="metric-value">0 ms</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Active Workers</span>
+                <span id="worker-count" class="metric-value">0</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Mining Address</span>
+                <span id="mining-address" class="metric-value">-</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3><i class="fas fa-users"></i>Worker Performance</h3>
+            <div id="worker-list" class="worker-list">
+                <div class="loading pulse">Loading workers...</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3><i class="fas fa-chart-line"></i>Hashrate Chart</h3>
+            <div class="chart-container">
+                <canvas id="hashrate-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3><i class="fas fa-cube"></i>Block Template</h3>
+            <div class="metric">
+                <span class="metric-label">Block Height</span>
+                <span id="block-height" class="metric-value">-</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Coinbase Value</span>
+                <span id="coinbase-value" class="metric-value">-</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Transaction Count</span>
+                <span id="tx-count" class="metric-value">-</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Timestamp</span>
+                <span id="block-timestamp" class="metric-value">-</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3><i class="fas fa-cogs"></i>System Info</h3>
+            <div class="metric">
+                <span class="metric-label">Uptime</span>
+                <span id="uptime" class="metric-value">00:00:00</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Last Update</span>
+                <span id="last-update" class="metric-value">-</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Connection Status</span>
+                <span id="connection-status" class="metric-value status-inactive">Disconnected</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3><i class="fas fa-sliders-h"></i>Settings</h3>
+            <div class="metric">
+                <span class="metric-label">Update Interval</span>
+                <select id="update-interval" class="metric-value">
+                    <option value="1000">1 second</option>
+                    <option value="2000" selected>2 seconds</option>
+                    <option value="5000">5 seconds</option>
+                    <option value="10000">10 seconds</option>
+                </select>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Theme</span>
+                <select id="theme-selector" class="metric-value">
+                    <option value="dark" selected>Dark</option>
+                    <option value="light">Light</option>
+                </select>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Notifications</span>
+                <input type="checkbox" id="notifications-enabled" checked>
+            </div>
+            <div class="controls">
+                <button id="save-settings" class="btn"><i class="fas fa-save"></i> Save Settings</button>
+                <button id="reset-settings" class="btn btn-danger"><i class="fas fa-undo"></i> Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class MiningDashboard {
+            constructor() {
+                this.rpcUrl = 'http://127.0.0.1:16110';
+                this.updateInterval = 2000; // 2 seconds
+                this.chartData = [];
+                this.maxChartPoints = 50;
+                this.startTime = Date.now();
+
+                this.init();
+            }
+
+            init() {
+                this.bindEvents();
+                this.startUpdates();
+                this.initChart();
+            }
+
+            bindEvents() {
+                document.getElementById('start-mining').addEventListener('click', () => this.controlMining(true));
+                document.getElementById('stop-mining').addEventListener('click', () => this.controlMining(false));
+                document.getElementById('save-settings').addEventListener('click', () => this.saveSettings());
+                document.getElementById('reset-settings').addEventListener('click', () => this.resetSettings());
+                document.getElementById('update-interval').addEventListener('change', (e) => this.changeUpdateInterval(e.target.value));
+                document.getElementById('theme-selector').addEventListener('change', (e) => this.changeTheme(e.target.value));
+            }
+
+            async controlMining(start) {
+                // This would need additional RPC methods to control mining
+                this.showAlert(`${start ? 'Starting' : 'Stopping'} mining...`, 'info');
+            }
+
+            async fetchMiningInfo() {
+                try {
+                    const response = await fetch(this.rpcUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            jsonrpc: '2.0',
+                            method: 'get_mining_info',
+                            params: [],
+                            id: 1
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.error) {
+                        throw new Error(data.error.message);
+                    }
+
+                    this.updateUI(data.result);
+                    this.updateConnectionStatus(true);
+                    this.hideAlert();
+
+                } catch (error) {
+                    console.error('RPC Error:', error);
+                    this.updateConnectionStatus(false);
+                    this.showAlert(`Connection failed: ${error.message}`, 'error');
+                }
+            }
+
+            updateUI(data) {
+                // Mining Status
+                const statusEl = document.getElementById('mining-status');
+                statusEl.textContent = data.is_mining ? 'Active' : 'Not Mining';
+                statusEl.className = `metric-value ${data.is_mining ? 'status-active' : 'status-inactive'}`;
+
+                // Hashrates
+                document.getElementById('current-hashrate').textContent = this.formatHashrate(data.current_hashrate);
+                document.getElementById('network-hashrate').textContent = this.formatHashrate(data.network_hashrate);
+
+                // Other metrics
+                document.getElementById('difficulty').textContent = data.difficulty.toFixed(2);
+                document.getElementById('blocks-mined').textContent = data.blocks_mined;
+                document.getElementById('total-mining-time').textContent = `${data.total_mining_time_ms} ms`;
+                document.getElementById('worker-count').textContent = data.worker_count;
+                document.getElementById('mining-address').textContent = data.mining_address || '-';
+
+                // Workers
+                this.updateWorkers(data.workers);
+
+                // Block Template
+                if (data.current_template) {
+                    document.getElementById('block-height').textContent = data.current_template.height;
+                    document.getElementById('coinbase-value').textContent = data.current_template.coinbase_value;
+                    document.getElementById('tx-count').textContent = data.current_template.transaction_count;
+                    document.getElementById('block-timestamp').textContent = new Date(data.current_template.timestamp * 1000).toLocaleString();
+                }
+
+                // Update chart
+                this.updateChart(data.current_hashrate);
+
+                // Last update
+                document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+            }
+
+            updateWorkers(workers) {
+                const workerList = document.getElementById('worker-list');
+
+                if (!workers || workers.length === 0) {
+                    workerList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">No active workers</div>';
+                    return;
+                }
+
+                workerList.innerHTML = workers.map(worker => `
+                    <div class="worker-item">
+                        <span class="worker-name">Worker ${worker.id}</span>
+                        <span class="worker-hashrate">${this.formatHashrate(worker.hashrate)}</span>
+                    </div>
+                `).join('');
+            }
+
+            formatHashrate(hashrate) {
+                if (hashrate >= 1e12) return (hashrate / 1e12).toFixed(2) + ' TH/s';
+                if (hashrate >= 1e9) return (hashrate / 1e9).toFixed(2) + ' GH/s';
+                if (hashrate >= 1e6) return (hashrate / 1e6).toFixed(2) + ' MH/s';
+                if (hashrate >= 1e3) return (hashrate / 1e3).toFixed(2) + ' KH/s';
+                return hashrate.toFixed(2) + ' H/s';
+            }
+
+            updateConnectionStatus(connected) {
+                const statusEl = document.getElementById('connection-status');
+                statusEl.textContent = connected ? 'Connected' : 'Disconnected';
+                statusEl.className = `metric-value ${connected ? 'status-active' : 'status-inactive'}`;
+            }
+
+            updateUptime() {
+                const uptimeEl = document.getElementById('uptime');
+                const elapsed = Date.now() - this.startTime;
+                const seconds = Math.floor(elapsed / 1000);
+                const minutes = Math.floor(seconds / 60);
+                const hours = Math.floor(minutes / 60);
+
+                uptimeEl.textContent = `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
+            }
+
+            initChart() {
+                // Simple canvas-based chart
+                this.canvas = document.getElementById('hashrate-chart');
+                this.ctx = this.canvas.getContext('2d');
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+            }
+
+            resizeCanvas() {
+                this.canvas.width = this.canvas.parentElement.offsetWidth;
+                this.canvas.height = 200;
+            }
+
+            updateChart(newValue) {
+                this.chartData.push({
+                    value: newValue,
+                    time: Date.now()
+                });
+
+                // Keep only recent data
+                if (this.chartData.length > this.maxChartPoints) {
+                    this.chartData.shift();
+                }
+
+                this.drawChart();
+            }
+
+            drawChart() {
+                if (this.chartData.length < 2) return;
+
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                const maxValue = Math.max(...this.chartData.map(d => d.value)) || 1;
+                const minValue = Math.min(...this.chartData.map(d => d.value)) || 0;
+                const range = maxValue - minValue || 1;
+
+                this.ctx.strokeStyle = '#00d4ff';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+
+                this.chartData.forEach((point, index) => {
+                    const x = (index / (this.chartData.length - 1)) * this.canvas.width;
+                    const y = this.canvas.height - ((point.value - minValue) / range) * (this.canvas.height - 20) - 10;
+
+                    if (index === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                });
+
+                this.ctx.stroke();
+
+                // Draw grid lines
+                this.ctx.strokeStyle = '#333';
+                this.ctx.lineWidth = 1;
+                this.ctx.setLineDash([5, 5]);
+
+                for (let i = 0; i <= 5; i++) {
+                    const y = (i / 5) * (this.canvas.height - 20) + 10;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(this.canvas.width, y);
+                    this.ctx.stroke();
+                }
+
+                this.ctx.setLineDash([]);
+            }
+
+            showAlert(message, type = 'error') {
+                const alertEl = document.getElementById('alert');
+                alertEl.textContent = message;
+                alertEl.style.display = 'block';
+                alertEl.style.background = type === 'error' ? '#ff6b6b' : '#00d4ff';
+            }
+
+            hideAlert() {
+                document.getElementById('alert').style.display = 'none';
+            }
+
+            saveSettings() {
+                const updateInterval = document.getElementById('update-interval').value;
+                const theme = document.getElementById('theme-selector').value;
+                const notifications = document.getElementById('notifications-enabled').checked;
+
+                localStorage.setItem('mining-dashboard-update-interval', updateInterval);
+                localStorage.setItem('mining-dashboard-theme', theme);
+                localStorage.setItem('mining-dashboard-notifications', notifications);
+
+                this.showAlert('Settings saved successfully!', 'info');
+                setTimeout(() => this.hideAlert(), 3000);
+            }
+
+            resetSettings() {
+                localStorage.removeItem('mining-dashboard-update-interval');
+                localStorage.removeItem('mining-dashboard-theme');
+                localStorage.removeItem('mining-dashboard-notifications');
+
+                document.getElementById('update-interval').value = '2000';
+                document.getElementById('theme-selector').value = 'dark';
+                document.getElementById('notifications-enabled').checked = true;
+
+                this.changeUpdateInterval(2000);
+                this.changeTheme('dark');
+
+                this.showAlert('Settings reset to defaults!', 'info');
+                setTimeout(() => this.hideAlert(), 3000);
+            }
+
+            changeUpdateInterval(interval) {
+                this.updateInterval = parseInt(interval);
+                // Restart updates with new interval
+                clearInterval(this.updateTimer);
+                this.startUpdates();
+            }
+
+            changeTheme(theme) {
+                const body = document.body;
+                if (theme === 'light') {
+                    body.style.background = '#f0f0f0';
+                    body.style.color = '#333';
+                    document.querySelectorAll('.card').forEach(card => {
+                        card.style.background = '#fff';
+                        card.style.borderColor = '#ddd';
+                    });
+                    document.querySelectorAll('.metric-label').forEach(label => {
+                        label.style.color = '#666';
+                    });
+                    document.querySelectorAll('.metric-value').forEach(value => {
+                        value.style.color = '#000';
+                    });
+                } else {
+                    body.style.background = '#0a0a0a';
+                    body.style.color = '#e0e0e0';
+                    document.querySelectorAll('.card').forEach(card => {
+                        card.style.background = 'linear-gradient(135deg, #1e1e2e, #2a2a3e)';
+                        card.style.borderColor = '#333';
+                    });
+                    document.querySelectorAll('.metric-label').forEach(label => {
+                        label.style.color = '#b0b0b0';
+                    });
+                    document.querySelectorAll('.metric-value').forEach(value => {
+                        value.style.color = '#fff';
+                    });
+                }
+            }
+
+            startUpdates() {
+                // Initial fetch
+                this.fetchMiningInfo();
+
+                // Regular updates
+                this.updateTimer = setInterval(() => {
+                    this.fetchMiningInfo();
+                    this.updateUptime();
+                }, this.updateInterval);
+            }
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new MiningDashboard();
+        });
+    </script>
+</body>
+</html>

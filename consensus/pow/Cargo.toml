@@ -1,0 +1,15 @@
+[package]
+name = "consensus_pow"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "consensus_pow"
+path = "src/lib.rs"
+
+[dependencies]
+consensus_core = { path = "../core" }
+jio_math = { path = "../../math" }
+crypto-hashes = { path = "../../crypto/hashes" }
+serde = { version = "1.0", features = ["derive"] }
+primitive-types = "0.12"

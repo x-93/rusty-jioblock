@@ -1,0 +1,12 @@
+[package]
+name = "crypto"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "crypto"
+path = "src/lib.rs"
+
+[dependencies]
+crypto-hashes = { path = "./hashes" }
+serde = { version = "1.0", features = ["derive"] }

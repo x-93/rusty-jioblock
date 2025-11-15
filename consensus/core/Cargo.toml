@@ -1,0 +1,38 @@
+[package]
+name = "consensus_core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "consensus_core"
+path = "src/lib.rs"
+
+[dependencies]
+borsh = "0.9"
+borsh-derive = "0.9"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+sha2 = "0.10"
+ripemd = "0.2.0-rc.3"
+hex = "0.4"
+faster-hex = "0.6"
+smallvec = { version = "1.11", features = ["serde"] }
+primitive-types = "0.12"
+crypto-hashes = { path = "../../crypto/hashes" }
+wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+js-sys = "0.3"
+workflow-wasm = "0.6"
+
+# Local dependencies
+jio_utils = { path = "../../utils" }
+jio_math = { path = "../../math" }
+futures-core = "0.3"
+
+[features]
+default = []
+wasm32-sdk = []
+
+[dev-dependencies]
+# Common test helper crates
+hex = "0.4"

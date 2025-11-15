@@ -1,0 +1,17 @@
+[package]
+name = "jio_utils"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "jio_utils"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_bytes = "0.11"
+borsh = "0.9"
+borsh-derive = "0.9"
+hex = "0.4"
+
+[dev-dependencies]

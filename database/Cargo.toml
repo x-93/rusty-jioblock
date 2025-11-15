@@ -1,0 +1,23 @@
+[package]
+name = "database"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "database"
+path = "src/lib.rs"
+
+[dependencies]
+rocksdb = "0.21"
+serde = { version = "1.0", features = ["derive"] }
+bincode = "1.3"
+thiserror = "1.0"
+parking_lot = "0.12"
+tracing = "0.1"
+
+# Local workspace dependencies
+consensus_core = { path = "../consensus/core" }
+
+[dev-dependencies]
+tempfile = "3.8"
+criterion = "0.5"

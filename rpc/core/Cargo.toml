@@ -1,0 +1,15 @@
+[package]
+name = "rpc_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+serde = { version = "1.0", features = ["derive"] }
+async-trait = "0.1"
+consensus = { path = "../../consensus" }
+consensus_core = { path = "../../consensus/core" }
+network = { path = "../../network" }
+wallet = { path = "../../wallet" }
+hex = "0.4"
+bincode = "1.3"
