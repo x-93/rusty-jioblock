@@ -184,7 +184,7 @@ pub struct Transaction {
 
     // A field that is used to cache the transaction ID.
     // Always use the corresponding self.id() instead of accessing this field directly
-    #[serde(with = "serde_bytes_fixed_ref")]
+    #[serde(skip)]
     id: TransactionId,
 }
 

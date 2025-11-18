@@ -161,6 +161,21 @@ impl BlockStore {
         blocks.len()
     }
 
+    /// Get all blocks (for height-based lookup)
+    pub fn get_all_blocks(&self) -> Vec<Block> {
+        if let Some(db) = &self.db_store {
+            match db.get_all_blocks() {
+                Ok(blocks) => return blocks,
+                Err(e) => {
+                    eprintln!("DB get_all_blocks error: {}", e);
+                    return vec![];
+                }
+            }
+        }
+        let blocks = self.blocks.read().unwrap();
+        blocks.values().cloned().collect()
+    }
+
     /// Get number of stored headers
     pub fn header_count(&self) -> usize {
         if let Some(hdb) = &self.db_header_store {

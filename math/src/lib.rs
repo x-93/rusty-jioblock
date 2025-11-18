@@ -1,6 +1,7 @@
 use std::ops::{Add, AddAssign};
 use borsh_derive::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 /// Simple 192-bit unsigned integer implemented as 3 little-endian u64 limbs.
 /// Provides the small API used by the consensus core (From<u64>, AddAssign, Add, to_bytes).
@@ -45,6 +46,17 @@ impl Add for Uint192 {
         let mut r = self;
         r += rhs;
         r
+    }
+}
+
+impl fmt::Display for Uint192 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Convert to hex string for display
+        let bytes = self.to_bytes();
+        for byte in bytes.iter().rev() {
+            write!(f, "{:02x}", byte)?;
+        }
+        Ok(())
     }
 }
 

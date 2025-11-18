@@ -1,0 +1,60 @@
+[package]
+name = "jio-explorer"
+version = "0.1.0"
+edition = "2021"
+authors = ["JIO Team"]
+description = "JIO Blockchain Explorer Backend"
+
+[dependencies]
+# Web framework
+axum = { version = "0.7", features = ["ws", "macros", "multipart"] }
+tokio = { version = "1.35", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "compression-gzip", "trace"] }
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Async traits
+async-trait = "0.1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# WebSocket
+tokio-tungstenite = "0.21"
+futures-util = "0.3"
+
+# Cache
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
+
+# Hex encoding
+hex = "0.4"
+url = { version = "2.2", features = ["serde"] }
+
+# Internal dependencies
+consensus_core = { path = "../consensus/core" }
+consensus = { path = "../consensus" }
+rpc_core = { path = "../rpc/core" }
+database = { path = "../database" }
+network = { path = "../network" }
+
+[dev-dependencies]
+tempfile = "3.23.0"
+tokio-test = "0.4"
+

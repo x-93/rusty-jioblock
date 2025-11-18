@@ -78,6 +78,36 @@ impl Address {
 
         Ok(ScriptPublicKey::from_vec(0, script))
     }
+
+    /// Get address from script public key
+    pub fn from_script_pub_key(script: &ScriptPublicKey) -> Result<String, String> {
+        let script_bytes = script.script();
+        // Check for P2PKH script structure
+        if script_bytes.len() == 25 &&
+           script_bytes[0] == 0x76 && // OP_DUP
+           script_bytes[1] == 0xa9 && // OP_HASH160
+           script_bytes[2] == 0x14 && // PUSH(20)
+           script_bytes[23] == 0x88 && // OP_EQUALVERIFY
+           script_bytes[24] == 0xac { // OP_CHECKSIG
+
+            let pubkey_hash = &script_bytes[3..23];
+
+            // Add version byte (0x00 for mainnet)
+            let mut versioned_payload = vec![0x00];
+            versioned_payload.extend_from_slice(pubkey_hash);
+
+            // Double SHA256 for checksum
+            let checksum = Sha256::digest(&Sha256::digest(&versioned_payload));
+
+            // Add first 4 bytes of checksum
+            versioned_payload.extend_from_slice(&checksum[0..4]);
+
+            // Base58 encode
+            Ok(bs58::encode(&versioned_payload).into_string())
+        } else {
+            Err("Not a standard P2PKH script".to_string())
+        }
+    }
 }
 
 #[cfg(test)]

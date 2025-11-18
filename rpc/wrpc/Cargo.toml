@@ -14,3 +14,4 @@ async-trait = "0.1"
 rpc_core = { path = "../core" }
 consensus_core = { path = "../../consensus/core" }
 tracing = "0.1"
+hex = "0.4.3"

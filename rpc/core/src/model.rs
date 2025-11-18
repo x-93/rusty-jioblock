@@ -1,13 +1,20 @@
 //! RPC data models and types
 
-use consensus_core::{block::Block, tx::Transaction, Hash};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use consensus_core::{block::Block, tx::Transaction, Hash};
 
 /// RPC error type
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RpcError {
-    pub code: i32,
-    pub message: String,
+#[derive(Error, Debug, Clone, Serialize, Deserialize)]
+pub enum RpcError {
+    #[error("Network error: {0}")]
+    Network(String),
+
+    #[error("Internal error: {0}")]
+    Internal(String),
+
+    #[error("RPC error {code}: {message}")]
+    Rpc { code: i32, message: String },
 }
 
 /// Block DAG information

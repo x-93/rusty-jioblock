@@ -48,4 +48,15 @@ impl BlockStore {
         for _ in iter { count += 1; }
         Ok(count)
     }
+
+    pub fn get_all_blocks(&self) -> DbResult<Vec<Block>> {
+        let mut blocks = Vec::new();
+        let iter = self.db.iterator(crate::db::CF_BLOCKS, rocksdb::IteratorMode::Start)?;
+        for item in iter {
+            let (_, data) = item?;
+            let block: Block = bincode::deserialize(&data)?;
+            blocks.push(block);
+        }
+        Ok(blocks)
+    }
 }

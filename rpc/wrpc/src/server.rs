@@ -7,6 +7,8 @@ use tokio_tungstenite::{accept_async, tungstenite::Message};
 use tracing::{error, info};
 use rpc_core::RpcCoordinator;
 use rpc_core::RpcApi;
+use consensus_core::{block::Block, tx::Transaction, Hash};
+use hex;
 
 #[derive(Debug, serde::Deserialize)]
 struct JsonRpcRequest {
@@ -132,28 +134,35 @@ impl WrpcServer {
             }
             "getBlock" => {
                 let params = rpc_req.params.ok_or("Missing params")?;
-                let hash_str = params.get("hash")
-                    .and_then(|v| v.as_str())
-                    .ok_or("Missing hash parameter")?;
+                let hash_str = if let serde_json::Value::Array(arr) = &params {
+                    if arr.len() > 0 {
+                        arr[0].as_str().ok_or("Invalid hash parameter")?
+                    } else {
+                        return Err("Missing hash parameter".to_string());
+                    }
+                } else {
+                    return Err("Invalid params format".to_string());
+                };
 
-                // For now, return a placeholder - need to implement Hash parsing
-                serde_json::json!({
-                    "hash": hash_str,
-                    "height": 0,
-                    "timestamp": 0,
-                    "transactions": []
-                })
+                let bytes = hex::decode(hash_str).map_err(|e| format!("Invalid hex: {}", e))?;
+                let array: [u8; 32] = bytes.try_into().map_err(|_| "Invalid hash length".to_string())?;
+                let hash = Hash::from(array);
+
+                let block = coordinator.get_block(hash).await
+                    .map_err(|e| format!("getBlock error: {:?}", e))?;
+
+                serde_json::to_value(&block).map_err(|e| format!("Serialization error: {}", e))?
             }
             "getBlockDagInfo" => {
                 let info = coordinator.get_block_dag_info().await
                     .map_err(|e| format!("getBlockDagInfo error: {:?}", e))?;
                 serde_json::json!({
-                    "blockCount": info.block_count,
-                    "tipHashes": info.tip_hashes.iter().map(|h| h.to_string()).collect::<Vec<_>>(),
+                    "block_count": info.block_count,
+                    "tip_hashes": info.tip_hashes.iter().map(|h| h.to_string()).collect::<Vec<_>>(),
                     "difficulty": info.difficulty,
                     "network": info.network,
-                    "virtualParentHashes": info.virtual_parent_hashes.iter().map(|h| h.to_string()).collect::<Vec<_>>(),
-                    "pruningPointHash": info.pruning_point_hash.to_string()
+                    "virtual_parent_hashes": info.virtual_parent_hashes.iter().map(|h| h.to_string()).collect::<Vec<_>>(),
+                    "pruning_point_hash": info.pruning_point_hash.to_string()
                 })
             }
             "getPeerInfo" => {
@@ -192,6 +201,83 @@ impl WrpcServer {
                 let info = coordinator.get_mining_info().await
                     .map_err(|e| format!("getMiningInfo error: {:?}", e))?;
                 serde_json::to_value(&info).map_err(|e| format!("Serialization error: {}", e))?
+            }
+            "getTransaction" => {
+                let params = rpc_req.params.ok_or("Missing params")?;
+                let hash_str = if let serde_json::Value::Array(arr) = &params {
+                    if arr.len() > 0 {
+                        arr[0].as_str().ok_or("Invalid hash parameter")?
+                    } else {
+                        return Err("Missing hash parameter".to_string());
+                    }
+                } else {
+                    return Err("Invalid params format".to_string());
+                };
+
+                let bytes = hex::decode(hash_str).map_err(|e| format!("Invalid hex: {}", e))?;
+                let array: [u8; 32] = bytes.try_into().map_err(|_| "Invalid hash length".to_string())?;
+                let hash = Hash::from(array);
+
+                let tx = coordinator.get_transaction(hash).await
+                    .map_err(|e| format!("getTransaction error: {:?}", e))?;
+                serde_json::to_value(&tx).map_err(|e| format!("Serialization error: {}", e))?
+            }
+            "getRecentBlocks" => {
+                let params = rpc_req.params.ok_or("Missing params")?;
+                let count = if let serde_json::Value::Array(arr) = &params {
+                    if arr.len() > 0 {
+                        arr[0].as_u64().ok_or("Invalid count parameter")? as usize
+                    } else {
+                        return Err("Missing count parameter".to_string());
+                    }
+                } else {
+                    return Err("Invalid params format".to_string());
+                };
+
+                let blocks = coordinator.get_recent_blocks(count).await
+                    .map_err(|e| format!("getRecentBlocks error: {:?}", e))?;
+                serde_json::to_value(&blocks).map_err(|e| format!("Serialization error: {}", e))?
+            }
+            "getDagTips" => {
+                let tips = coordinator.get_dag_tips().await
+                    .map_err(|e| format!("getDagTips error: {:?}", e))?;
+                serde_json::to_value(&tips).map_err(|e| format!("Serialization error: {}", e))?
+            }
+            "getBlockChildren" => {
+                let params = rpc_req.params.ok_or("Missing params")?;
+                let hash_str = if let serde_json::Value::Array(arr) = &params {
+                    if arr.len() > 0 {
+                        arr[0].as_str().ok_or("Invalid hash parameter")?
+                    } else {
+                        return Err("Missing hash parameter".to_string());
+                    }
+                } else {
+                    return Err("Invalid params format".to_string());
+                };
+
+                let bytes = hex::decode(hash_str).map_err(|e| format!("Invalid hex: {}", e))?;
+                let array: [u8; 32] = bytes.try_into().map_err(|_| "Invalid hash length".to_string())?;
+                let hash = Hash::from(array);
+
+                let children = coordinator.get_block_children(hash).await
+                    .map_err(|e| format!("getBlockChildren error: {:?}", e))?;
+                serde_json::to_value(&children).map_err(|e| format!("Serialization error: {}", e))?
+            }
+            "getBlockByHeight" => {
+                let params = rpc_req.params.ok_or("Missing params")?;
+                let height = if let serde_json::Value::Array(arr) = &params {
+                    if arr.len() > 0 {
+                        arr[0].as_u64().ok_or("Invalid height parameter")?
+                    } else {
+                        return Err("Missing height parameter".to_string());
+                    }
+                } else {
+                    return Err("Invalid params format".to_string());
+                };
+
+                let block = coordinator.get_block_by_height(height).await
+                    .map_err(|e| format!("getBlockByHeight error: {:?}", e))?;
+                serde_json::to_value(&block).map_err(|e| format!("Serialization error: {}", e))?
             }
             _ => {
                 return Err(format!("Unknown method: {}", rpc_req.method));

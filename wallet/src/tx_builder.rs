@@ -44,7 +44,7 @@ impl TxBuilder {
     }
 
     /// Build transaction
-    pub fn build(self) -> Result<Transaction, String> {
+    pub fn build(self, utxos: &HashMap<TransactionOutpoint, consensus_core::tx::UtxoEntry>) -> Result<Transaction, String> {
         if self.inputs.is_empty() {
             return Err("No inputs specified".to_string());
         }
@@ -54,7 +54,7 @@ impl TxBuilder {
 
         // Calculate total input and output amounts
         let total_input: u128 = self.inputs.iter()
-            .map(|_| 0u128) // Would need UTXO lookup in real implementation
+            .map(|input| utxos.get(&input.previous_outpoint).map_or(0, |utxo| utxo.amount as u128))
             .sum();
         let total_output: u128 = self.outputs.iter()
             .map(|o| o.value as u128)

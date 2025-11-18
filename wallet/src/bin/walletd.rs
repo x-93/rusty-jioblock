@@ -209,16 +209,87 @@ fn main() -> Result<(), String> {
                 return Err(format!("Invalid recipient address: {}", to));
             }
 
-            // Create transaction (minimal example - no UTXO inputs for now)
-            println!("Sender: {}", sender_addr);
-            println!("Recipient: {}", to);
-            println!("Amount: {} satoshis", amount);
-            println!("Transaction signing not fully implemented (requires UTXO set)");
-            println!("Would need to:");
-            println!("  1. Query UTXO set for sender funds");
-            println!("  2. Select UTXOs to spend");
-            println!("  3. Create transaction with inputs/outputs");
-            println!("  4. Sign with secret key");
+            // --- Consensus Storage Integration ---
+            // 1. Open the database (path is hardcoded for now)
+            let db_path = PathBuf::from("d:\\Jio-Block\\data");
+            let db = Arc::new(Database::open(&db_path).map_err(|e| format!("Failed to open database: {}", e))?);
+
+            // 2. Create database-backed store instances
+            let db_block_store = Arc::new(DbBlockStore::new(db.clone(), 1024));
+            let db_header_store = Arc::new(DbHeaderStore::new(db.clone(), 1024));
+            let db_utxo_store = Arc::new(DbUtxoStore::new(db.clone(), 1024));
+
+            // 3. Create consensus stores with the DB-backed stores
+            let block_store = Arc::new(BlockStore::new_with_db(db_block_store, Some(db_header_store)));
+            let utxo_set = Arc::new(UtxoSet::new_with_db(db_utxo_store));
+
+            // 4. Create the main ConsensusStorage instance
+            let consensus_storage = ConsensusStorage::with_stores(block_store, utxo_set);
+            println!("Successfully initialized consensus storage from database.");
+            // --- End of Integration ---
+
+            // Now, you can use consensus_storage to query UTXOs
+            let utxo_view = consensus_storage.utxo_set();
+            let utxo_snapshot = utxo_view.snapshot();
+
+            println!("Found {} total UTXOs in the database.", utxo_snapshot.len());
+
+            let mut sender_utxos = Vec::new();
+            for (outpoint, utxo_entry) in utxo_snapshot.iter() {
+                if let Ok(addr) = Address::from_script_pub_key(&utxo_entry.script_public_key) {
+                    if addr == sender_addr {
+                        sender_utxos.push((outpoint.clone(), utxo_entry.clone()));
+                    }
+                }
+            }
+
+            println!("Found {} UTXOs for sender address {}:", sender_utxos.len(), sender_addr);
+            for (outpoint, entry) in &sender_utxos {
+                println!("  - Outpoint: {}:{}, Amount: {}", outpoint.transaction_id, outpoint.index, entry.amount);
+            }
+
+            // Convert sender_utxos to HashMap for TxBuilder
+            let utxo_map: HashMap<TransactionOutpoint, UtxoEntry> = sender_utxos.into_iter().collect();
+
+            // Use TxBuilder to construct the transaction
+            let tx_builder = TxBuilder::send_to_address(
+                &utxo_map,
+                &sender_addr.to_string(),
+                &to,
+                amount,
+                1, // fee rate (sompi per byte)
+            ).map_err(|e| format!("Failed to build transaction: {}", e))?;
+
+            println!("Transaction built successfully. Now signing...");
+
+            // Build the transaction
+            let unsigned_tx = tx_builder.build(&utxo_map)
+                .map_err(|e| format!("Failed to finalize transaction build: {}", e))?;
+
+            // Create signer
+            let signer = Signer::new(keys);
+
+            // Get secret keys for inputs.
+            // This is simplified: it assumes all inputs are from the same `from_index` address.
+            let mut secret_keys = Vec::new();
+            for _ in 0..unsigned_tx.inputs.len() {
+                secret_keys.push(sk.clone());
+            }
+
+            // Sign the transaction
+            let signed_tx = signer.sign_transaction(unsigned_tx, &secret_keys)
+                .map_err(|e| format!("Failed to sign transaction: {}", e))?;
+            
+            println!("Transaction signed successfully.");
+
+            // Encode the signed transaction to hex
+            let serialized_tx = bincode::serialize(&signed_tx)
+                .map_err(|e| format!("Failed to serialize transaction: {}", e))?;
+            let hex_tx = hex::encode(serialized_tx);
+
+            println!("--- Signed Transaction (Hex) ---");
+            println!("{}", hex_tx);
+            println!("---------------------------------");
             
             Ok(())
         }

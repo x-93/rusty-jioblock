@@ -6,7 +6,7 @@ use crate::model::*;
 
 /// Core RPC API trait defining all available RPC methods
 #[async_trait]
-pub trait RpcApi {
+pub trait RpcApi: Send + Sync {
     // Blockchain methods
     async fn get_block_count(&self) -> Result<u64, RpcError>;
     async fn get_block(&self, hash: Hash) -> Result<Block, RpcError>;

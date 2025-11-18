@@ -47,9 +47,9 @@ impl RpcCoordinator {
         match hex::decode(hex) {
             Ok(bytes) => match bincode::deserialize::<Block>(&bytes) {
                 Ok(block) => Ok(block),
-                Err(e) => Err(RpcError { code: -22, message: format!("Failed to deserialize block: {}", e) }),
+                Err(e) => Err(RpcError::Rpc { code: -22, message: format!("Failed to deserialize block: {}", e) }),
             },
-            Err(e) => Err(RpcError { code: -22, message: format!("Failed to decode hex: {}", e) }),
+            Err(e) => Err(RpcError::Rpc { code: -22, message: format!("Failed to decode hex: {}", e) }),
         }
     }
 
@@ -57,9 +57,9 @@ impl RpcCoordinator {
         match hex::decode(hex) {
             Ok(bytes) => match bincode::deserialize::<Transaction>(&bytes) {
                 Ok(tx) => Ok(tx),
-                Err(e) => Err(RpcError { code: -22, message: format!("Failed to deserialize transaction: {}", e) }),
+                Err(e) => Err(RpcError::Rpc { code: -22, message: format!("Failed to deserialize transaction: {}", e) }),
             },
-            Err(e) => Err(RpcError { code: -22, message: format!("Failed to decode hex: {}", e) }),
+            Err(e) => Err(RpcError::Rpc { code: -22, message: format!("Failed to decode hex: {}", e) }),
         }
     }
 
@@ -122,7 +122,7 @@ impl RpcApi for RpcCoordinator {
 
     async fn get_block(&self, hash: Hash) -> Result<Block, RpcError> {
         self.storage.get_block(&hash)
-            .ok_or_else(|| RpcError {
+            .ok_or_else(|| RpcError::Rpc {
                 code: -5,
                 message: "Block not found".to_string(),
             })
@@ -167,7 +167,7 @@ impl RpcApi for RpcCoordinator {
     async fn submit_block(&self, block: Block) -> Result<Hash, RpcError> {
         match self.processor.process_block(block) {
             Ok(result) => Ok(result.hash),
-            Err(e) => Err(RpcError {
+            Err(e) => Err(RpcError::Rpc {
                 code: -25,
                 message: format!("Block submission failed: {:?}", e),
             }),
@@ -178,7 +178,7 @@ impl RpcApi for RpcCoordinator {
         let tx = self.decode_hex_to_transaction(&tx_hex)?;
 
         // Add to mempool
-        self.mempool.add_transaction(tx.clone()).map_err(|e| RpcError {
+        self.mempool.add_transaction(tx.clone()).map_err(|e| RpcError::Rpc {
             code: -25,
             message: format!("Transaction rejected: {}", e),
         })?;
@@ -314,7 +314,7 @@ impl RpcApi for RpcCoordinator {
                 pending_balance: 0,
             })
         } else {
-            Err(RpcError {
+            Err(RpcError::Rpc {
                 code: -18,
                 message: "Wallet not available".to_string(),
             })
@@ -334,7 +334,7 @@ impl RpcApi for RpcCoordinator {
             let mut recent_hashes = self.recent_block_hashes.write().await;
             if recent_hashes.contains(&block_hash) {
                 eprintln!("[submitBlockHex] Duplicate block submission detected: {}", block_hash);
-                return Err(RpcError {
+                return Err(RpcError::Rpc {
                     code: -25,
                     message: format!("Duplicate block submission: {}", block_hash),
                 });
@@ -372,11 +372,18 @@ impl RpcApi for RpcCoordinator {
     }
     
     async fn get_block_by_height(&self, height: u64) -> Result<Block, RpcError> {
-        // TODO: Implement block lookup by height
-        // For now, return error
-        Err(RpcError {
+        // Get all blocks and find the one with matching DAA score (height)
+        let all_blocks = self.storage.block_store().get_all_blocks();
+
+        for block in all_blocks {
+            if block.header.daa_score == height {
+                return Ok(block);
+            }
+        }
+
+        Err(RpcError::Rpc {
             code: -5,
-            message: "Block lookup by height not yet implemented".to_string(),
+            message: format!("Block at height {} not found", height),
         })
     }
     
@@ -391,7 +398,7 @@ impl RpcApi for RpcCoordinator {
         
         // Try to get from blocks
         // TODO: Implement transaction lookup from blocks
-        Err(RpcError {
+        Err(RpcError::Rpc {
             code: -5,
             message: "Transaction not found".to_string(),
         })

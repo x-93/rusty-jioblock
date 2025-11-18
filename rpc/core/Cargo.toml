@@ -13,3 +13,4 @@ network = { path = "../../network" }
 wallet = { path = "../../wallet" }
 hex = "0.4"
 bincode = "1.3"
+thiserror = "1.0"
