@@ -1,20 +1,30 @@
 [package]
-name = "crypto-hashes"
+name = "jio-hashes"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-name = "crypto_hashes"
-path = "src/lib.rs"
-
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
-borsh = "0.9"
-borsh-derive = "0.9"
-hex = "0.4"
-hex-literal = "0.3"
-thiserror = "1.0"
+blake3 = "1.5"
+num_cpus = "1.16"
+once_cell = "1.19"
 sha2 = "0.10"
+blake2b_simd = "1.0"
+borsh = { version = "1.5", features = ["derive"] }
+wasm-bindgen = "0.2"
+jio-utils = { path = "../../utils" }
+faster-hex = "0.9"
+lazy_static = "1.5"
+log = "0.4"
+tiny-keccak = { version = "2.0", features = ["keccak"] }
+sha3 = "0.10"
+keccak = "0.1"
+
+[features]
+no-asm = []
+
 [dev-dependencies]
-hex = "0.4"
-hex-literal = "0.3"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "bench"
+harness = false
